@@ -12,7 +12,7 @@ jobs:
     # Testcontainers uses the runner's Docker daemon to start Postgres, Redis,
     # and Kafka — no service containers needed here.
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5
