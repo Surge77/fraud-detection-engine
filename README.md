@@ -119,6 +119,10 @@ done
 the 11th request trips velocity → score 100 → **BLOCK**. The dashboard flashes a new row within a
 second and the `transactions.flagged` topic gets the event.
 
+![Live block dashboard](docs/img/block-dashboard.png)
+
+> The live block dashboard (`/dashboard.html`) with sample blocked transactions.
+
 ### Monitoring
 ```bash
 docker compose -f docker-compose.monitoring.yml up -d
