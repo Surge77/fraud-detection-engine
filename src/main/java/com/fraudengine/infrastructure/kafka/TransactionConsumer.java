@@ -42,7 +42,7 @@ public class TransactionConsumer {
         this.metrics = metrics;
     }
 
-    @KafkaListener(topics = KafkaTopics.INCOMING, groupId = "fraud-engine")
+    @KafkaListener(topics = KafkaTopics.INCOMING, groupId = "${spring.kafka.consumer.group-id}")
     public void consume(TransactionRequest request, Acknowledgment ack) {
         MDC.put(MDC_TRANSACTION_ID, request.transactionId());
         try {

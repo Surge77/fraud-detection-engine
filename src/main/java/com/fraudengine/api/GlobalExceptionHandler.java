@@ -2,6 +2,7 @@ package com.fraudengine.api;
 
 import com.fraudengine.domain.exception.DuplicateTransactionException;
 import com.fraudengine.domain.exception.TransactionNotFoundException;
+import com.fraudengine.domain.exception.UnauthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -45,6 +46,14 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleDuplicate(DuplicateTransactionException ex) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problem.setTitle("Duplicate transaction");
+        problem.setDetail(ex.getMessage());
+        return problem;
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ProblemDetail handleUnauthorized(UnauthorizedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+        problem.setTitle("Unauthorized");
         problem.setDetail(ex.getMessage());
         return problem;
     }

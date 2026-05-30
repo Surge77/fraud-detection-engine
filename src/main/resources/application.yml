@@ -20,7 +20,10 @@ spring:
     job:
       enabled: false
     jdbc:
-      initialize-schema: always
+      # Schema is owned by Flyway (V2). Never let Boot run the batch DDL — it would
+      # fail on the second startup against a persistent database (CREATE TABLE,
+      # no IF NOT EXISTS).
+      initialize-schema: never
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -64,6 +67,10 @@ springdoc:
 
 # Business config — tunable without code deploy
 fraud:
+  # Token required on admin endpoints (X-Admin-Token header). Dev default only;
+  # override with ADMIN_TOKEN in any real environment.
+  admin:
+    token: ${ADMIN_TOKEN:local-dev-admin-token}
   weights:
     blacklisted-merchant: 40
     high-velocity: 30

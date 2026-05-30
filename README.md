@@ -127,6 +127,14 @@ docker compose -f docker-compose.monitoring.yml up -d
 - Grafana: `http://localhost:3000` (admin/admin) — the **Fraud Engine** dashboard
   (block rate, pipeline p99/p95, active velocity accounts) is auto-provisioned on startup.
 
+### Nightly report (manual trigger)
+Admin endpoints require the `X-Admin-Token` header (`ADMIN_TOKEN` env, dev default `local-dev-admin-token`):
+```bash
+curl -X POST "http://localhost:8080/api/v1/admin/reports/trigger?date=2026-05-30" \
+  -H "X-Admin-Token: local-dev-admin-token"
+curl "http://localhost:8080/api/v1/reports?date=2026-05-30"
+```
+
 ### Test
 ```bash
 mvn test         # unit tests + coverage gate (no Docker)

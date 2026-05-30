@@ -61,3 +61,26 @@ Kafka topics: `transactions.incoming` (3 partitions), `transactions.flagged` (1)
 ## Performance target
 
 End-to-end pipeline latency p99 < 200ms, validated by the load test in Phase 8.
+
+Account daily limits are cached (Spring Cache, in-memory) since they change rarely and
+are read on every transaction — this removes a database round trip from the hot path.
+
+## Known limitations & trade-offs
+
+Deliberate choices, called out so they are not mistaken for oversights:
+
+- **Velocity active-accounts gauge** uses a `SCAN` over `fraud:velocity:*` on every Prometheus
+  scrape. Fine at demo scale; at millions of keys this is O(N) per scrape and should be replaced
+  with an approximate counter or a maintained set.
+- **Velocity can over-count under Kafka redelivery.** If a redelivery arrives before the first
+  attempt's audit row commits, the idempotency check (`existsByTransactionId`) misses and the
+  Redis counter increments twice. The unique constraint on `audit_log.transaction_id` still
+  prevents a duplicate decision; only the velocity metric is briefly inflated. A dedup store with
+  TTL would close this fully.
+- **Nightly report buckets by `created_at::date` in the server timezone.** Transactions near
+  midnight across timezones could land in an adjacent day's report. Acceptable for a daily summary;
+  a fixed reporting timezone would make it exact.
+- **Admin auth is a shared-secret header**, not full identity/RBAC. Sufficient to gate the trigger
+  endpoint for this scope; a real deployment would use Spring Security with proper authn/authz.
+- **WebSocket alerts use the in-memory STOMP broker** — single-instance only. Multi-instance needs
+  a broker relay or Redis pub/sub bridge (noted in `WebSocketConfig`).
