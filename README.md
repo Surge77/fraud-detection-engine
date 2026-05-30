@@ -7,6 +7,7 @@ to approve or block a transaction in milliseconds.
 Built with production concerns first: idempotency, async decoupling, observability, clean
 hexagonal architecture, and a test pyramid from pure unit tests up to Testcontainers integration.
 
+[![CI](https://github.com/Surge77/fraud-detection-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/Surge77/fraud-detection-engine/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3-green)](https://spring.io/projects/spring-boot)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
