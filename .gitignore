@@ -1,0 +1,47 @@
+# Claude Code local context — never push
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.mvn/timing/
+release.properties
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+
+# Java
+*.class
+*.jar
+*.war
+*.log
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+
+# Docker volumes (local data)
+**/pgdata/
+**/redis-data/
