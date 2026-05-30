@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Fraud Engine — Live Block Alerts</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        :root { color-scheme: dark; }
+        body { font-family: system-ui, sans-serif; margin: 0; background: #14110e; color: #f5efe6; }
+        header { padding: 1rem 1.5rem; border-bottom: 1px solid #3a322a; display: flex;
+                 align-items: center; justify-content: space-between; }
+        h1 { font-family: Georgia, serif; font-size: 1.25rem; margin: 0; }
+        .status { font-size: .8rem; padding: .25rem .6rem; border-radius: 999px; background: #5a1f1f; }
+        .status.connected { background: #1f5a2f; }
+        .cards { display: flex; gap: 1rem; padding: 1rem 1.5rem; }
+        .card { background: #221c16; border: 1px solid #3a322a; border-radius: 10px;
+                padding: .75rem 1rem; min-width: 140px; }
+        .card .label { font-size: .7rem; color: #b8a98f; text-transform: uppercase; letter-spacing: .05em; }
+        .card .value { font-size: 1.6rem; font-weight: 700; color: #e8843c; }
+        table { width: calc(100% - 3rem); margin: 0 1.5rem 2rem; border-collapse: collapse; }
+        th, td { text-align: left; padding: .55rem .75rem; border-bottom: 1px solid #2c251e; font-size: .85rem; }
+        th { color: #b8a98f; text-transform: uppercase; font-size: .68rem; letter-spacing: .05em; }
+        td.score { color: #e8843c; font-weight: 700; }
+        .reasons span { display: inline-block; background: #3a2a1a; color: #e8b07c; border-radius: 4px;
+                        padding: .1rem .4rem; margin: 0 .2rem .2rem 0; font-size: .72rem; }
+        @keyframes flash { from { background: #5a3a1a; } to { background: transparent; } }
+        tr.new { animation: flash 1.4s ease-out; }
+        .empty { color: #6b6256; padding: 1.5rem; font-style: italic; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>🛡 Fraud Engine — Live Block Alerts</h1>
+    <span id="status" class="status">connecting…</span>
+</header>
+<section class="cards">
+    <div class="card"><div class="label">Blocked</div><div class="value" id="blockedCount">0</div></div>
+    <div class="card"><div class="label">Avg risk score</div><div class="value" id="avgScore">—</div></div>
+</section>
+<table>
+    <thead>
+    <tr><th>Time</th><th>Transaction</th><th>Account</th><th>Merchant</th>
+        <th>Amount</th><th>Score</th><th>Reasons</th></tr>
+    </thead>
+    <tbody id="feed">
+    <tr id="emptyRow"><td colspan="7" class="empty">Waiting for blocked transactions…</td></tr>
+    </tbody>
+</table>
+
+<script>
+    let blockedCount = 0;
+    let scoreSum = 0;
+
+    function render(alert) {
+        const empty = document.getElementById('emptyRow');
+        if (empty) empty.remove();
+
+        blockedCount += 1;
+        scoreSum += alert.riskScore;
+        document.getElementById('blockedCount').textContent = blockedCount;
+        document.getElementById('avgScore').textContent = (scoreSum / blockedCount).toFixed(1);
+
+        const row = document.createElement('tr');
+        row.className = 'new';
+        const reasons = (alert.reasons || []).map(r => `<span>${r}</span>`).join('');
+        row.innerHTML = `
+            <td>${new Date(alert.timestamp).toLocaleTimeString()}</td>
+            <td>${alert.transactionId}</td>
+            <td>${alert.accountId}</td>
+            <td>${alert.merchantId}</td>
+            <td>${alert.amount}</td>
+            <td class="score">${alert.riskScore}</td>
+            <td class="reasons">${reasons}</td>`;
+        const feed = document.getElementById('feed');
+        feed.insertBefore(row, feed.firstChild);
+    }
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        const stomp = Stomp.over(socket);
+        stomp.debug = null;
+        stomp.connect({}, () => {
+            const badge = document.getElementById('status');
+            badge.textContent = 'connected';
+            badge.classList.add('connected');
+            stomp.subscribe('/topic/fraud-alerts', msg => render(JSON.parse(msg.body)));
+        }, () => {
+            const badge = document.getElementById('status');
+            badge.textContent = 'disconnected — retrying';
+            badge.classList.remove('connected');
+            setTimeout(connect, 3000);
+        });
+    }
+
+    connect();
+</script>
+</body>
+</html>
