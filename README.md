@@ -99,28 +99,53 @@ curl -X POST http://localhost:8080/api/v1/transactions \
 ```
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
+- Live block dashboard: `http://localhost:8080/dashboard.html`
 - Kafka UI: `http://localhost:8081`
 - RedisInsight: `http://localhost:5540`
 - Prometheus metrics: `http://localhost:8080/actuator/prometheus`
 
+### See a BLOCK in action
+Open the dashboard (`/dashboard.html`), then fire a transaction that trips three signals —
+blacklisted merchant + high-risk location + over the account's daily limit, then repeat past the
+velocity window to add HIGH_VELOCITY:
+```bash
+for i in $(seq 1 11); do
+  curl -s -X POST http://localhost:8080/api/v1/transactions \
+    -H "Content-Type: application/json" \
+    -d "{\"transactionId\":\"$(uuidgen)\",\"accountId\":\"acc_010\",\"amount\":50000,\"currency\":\"USD\",\"merchantId\":\"merch_001\",\"merchantName\":\"Dodgy\",\"location\":\"Nigeria\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > /dev/null
+done
+```
+`acc_010`'s limit is 1,000, so 50,000 exceeds it; `merch_001` is blacklisted; `Nigeria` is high-risk;
+the 11th request trips velocity → score 100 → **BLOCK**. The dashboard flashes a new row within a
+second and the `transactions.flagged` topic gets the event.
+
+### Monitoring
+```bash
+docker compose -f docker-compose.monitoring.yml up -d
+```
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (admin/admin) — the **Fraud Engine** dashboard
+  (block rate, pipeline p99/p95, active velocity accounts) is auto-provisioned on startup.
+
 ### Test
 ```bash
-mvn test         # unit tests (no Docker)
+mvn test         # unit tests + coverage gate (no Docker)
 mvn verify       # + Testcontainers integration tests (needs Docker)
 ```
+Coverage is gated at 85% line coverage on the core pipeline + orchestration via JaCoCo.
 
 ## Roadmap
 
 The engine is built in phases; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detail.
 
 1. **Foundation** — ingestion → persistence plumbing ✅
-2. **Rules engine** — blacklist, daily limit, high-risk location
-3. **Velocity + scoring** — Redis velocity, weighted scorer, decision engine
-4. **Kafka** — fully async pipeline, idempotency, dead-letter topic
-5. **WebSocket alerts** — live block-alert dashboard
-6. **Spring Batch** — nightly fraud summary report
-7. **Observability** — Micrometer metrics, Prometheus, structured JSON logs
-8. **Testing** — unit + integration + load test (p99 < 200ms)
+2. **Rules engine** — blacklist, daily limit, high-risk location ✅
+3. **Velocity + scoring** — Redis velocity, weighted scorer, decision engine ✅
+4. **Kafka** — fully async pipeline, idempotency, dead-letter topic ✅
+5. **WebSocket alerts** — live block-alert dashboard ✅
+6. **Spring Batch** — nightly fraud summary report ✅
+7. **Observability** — Micrometer metrics, Prometheus, structured JSON logs ✅
+8. **Testing** — unit + integration + load test (p99 < 200ms) ✅
 
 ## License
 

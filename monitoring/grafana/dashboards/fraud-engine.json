@@ -1,0 +1,81 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 39,
+  "title": "Fraud Engine",
+  "tags": ["fraud-engine"],
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "5s",
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Transactions processed",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "fraud_transactions_total_total", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Blocked",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "fraud_transactions_blocked_total", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Passed",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "fraud_transactions_passed_total", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Active velocity accounts",
+      "type": "stat",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "blue" } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "fraud_velocity_active_accounts", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Block rate (per sec, 5m window)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 4 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "rate(fraud_transactions_blocked_total[5m])", "legendFormat": "blocked/s", "datasource": { "type": "prometheus", "uid": "prometheus" } },
+        { "refId": "B", "expr": "rate(fraud_transactions_passed_total[5m])", "legendFormat": "passed/s", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Pipeline latency p99 / p95 (s)",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 4 },
+      "fieldConfig": { "defaults": { "unit": "s", "custom": { "drawStyle": "line", "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "expr": "histogram_quantile(0.99, sum(rate(fraud_pipeline_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "datasource": { "type": "prometheus", "uid": "prometheus" } },
+        { "refId": "B", "expr": "histogram_quantile(0.95, sum(rate(fraud_pipeline_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "datasource": { "type": "prometheus", "uid": "prometheus" } }
+      ]
+    }
+  ]
+}

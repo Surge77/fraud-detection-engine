@@ -51,4 +51,15 @@ class VelocityCheckerTest {
         checker().record("acc_001");
         verify(velocityPort).incrementAndCount("acc_001", WINDOW_SECONDS);
     }
+
+    @Test
+    void fails_open_when_velocity_store_unavailable() {
+        when(velocityPort.incrementAndCount("acc_001", WINDOW_SECONDS))
+                .thenThrow(new RuntimeException("redis down"));
+
+        var result = checker().record("acc_001");
+
+        assertThat(result.count()).isZero();
+        assertThat(result.exceeded()).isFalse();
+    }
 }
