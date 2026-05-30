@@ -6,31 +6,37 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Base for Testcontainers-backed integration tests. Spins up Postgres, Redis,
- * and Kafka and wires their dynamic connection details into Spring. Requires a
- * running Docker daemon; executed via failsafe in {@code mvn verify}.
+ * Base for Testcontainers-backed integration tests. Requires a running Docker
+ * daemon; executed via failsafe in {@code mvn verify}.
+ *
+ * <p>Uses the <strong>singleton container pattern</strong>: containers start
+ * once in a static initializer and are never stopped (Ryuk reaps them at JVM
+ * exit). This is deliberate — Spring caches the application context across test
+ * classes, so containers must outlive any single class. The {@code @Container}/
+ * {@code @Testcontainers} lifecycle would stop them after the first class and
+ * leave later classes' cached contexts pointing at dead containers.
  */
 @SpringBootTest
-@Testcontainers
 public abstract class AbstractIntegrationTest {
 
-    @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:15-alpine")
                     .withDatabaseName("fraud").withUsername("fraud").withPassword("fraud");
 
-    @Container
     static final RedisContainer REDIS =
             new RedisContainer(DockerImageName.parse("redis:7-alpine"));
 
-    @Container
     static final KafkaContainer KAFKA =
             new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.6.1"));
+
+    static {
+        POSTGRES.start();
+        REDIS.start();
+        KAFKA.start();
+    }
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
@@ -38,7 +44,7 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
         registry.add("spring.data.redis.host", REDIS::getRedisHost);
-        registry.add("spring.data.redis.port", () -> REDIS.getRedisPort());
+        registry.add("spring.data.redis.port", REDIS::getRedisPort);
         registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
     }
 }
