@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Structured JSON logs to stdout. MDC fields (e.g. transactionId) are
+         included automatically, so every line for a transaction is correlatable. -->
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <includeMdcKeyName>transactionId</includeMdcKeyName>
+            <customFields>{"service":"fraud-engine"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+
+    <logger name="com.fraudengine" level="DEBUG"/>
+</configuration>

@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: fraud-engine
+    metrics_path: /actuator/prometheus
+    static_configs:
+      # host.docker.internal resolves to the host running the Spring Boot app
+      # from inside the Prometheus container (Docker Desktop on Windows/macOS).
+      - targets: ["host.docker.internal:8080"]

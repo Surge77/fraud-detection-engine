@@ -7,6 +7,8 @@ import com.fraudengine.domain.model.TransactionRequest;
 import com.fraudengine.domain.ports.AlertPort;
 import com.fraudengine.domain.ports.FlaggedTransactionPublisher;
 import com.fraudengine.infrastructure.kafka.TransactionConsumer;
+import com.fraudengine.observability.FraudMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -34,6 +36,8 @@ class TransactionConsumerTest {
     @Mock
     private Acknowledgment ack;
 
+    private final FraudMetrics metrics = new FraudMetrics(new SimpleMeterRegistry());
+
     private TransactionRequest request() {
         return new TransactionRequest(
                 "tx-1", "acc_001", new BigDecimal("100"), "USD",
@@ -47,7 +51,7 @@ class TransactionConsumerTest {
     @Test
     void block_decision_is_published_flagged_alerted_and_acked() {
         when(evaluationService.evaluate(any())).thenReturn(decision(Decision.BLOCK, 90));
-        TransactionConsumer consumer = new TransactionConsumer(evaluationService, flaggedPublisher, alertPort);
+        TransactionConsumer consumer = new TransactionConsumer(evaluationService, flaggedPublisher, alertPort, metrics);
 
         consumer.consume(request(), ack);
 
@@ -59,7 +63,7 @@ class TransactionConsumerTest {
     @Test
     void pass_decision_is_acked_but_not_flagged_or_alerted() {
         when(evaluationService.evaluate(any())).thenReturn(decision(Decision.PASS, 0));
-        TransactionConsumer consumer = new TransactionConsumer(evaluationService, flaggedPublisher, alertPort);
+        TransactionConsumer consumer = new TransactionConsumer(evaluationService, flaggedPublisher, alertPort, metrics);
 
         consumer.consume(request(), ack);
 
