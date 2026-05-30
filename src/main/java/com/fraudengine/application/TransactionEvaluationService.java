@@ -6,6 +6,7 @@ import com.fraudengine.domain.model.FraudDecision;
 import com.fraudengine.domain.model.RuleViolation;
 import com.fraudengine.domain.model.TransactionRequest;
 import com.fraudengine.domain.model.VelocityResult;
+import com.fraudengine.domain.exception.TransactionNotFoundException;
 import com.fraudengine.domain.pipeline.DecisionEngine;
 import com.fraudengine.domain.pipeline.RiskScorer;
 import com.fraudengine.domain.pipeline.RulesEngine;
@@ -53,6 +54,14 @@ public class TransactionEvaluationService {
      * @return the fraud decision
      */
     public FraudDecision evaluate(TransactionRequest request) {
+        if (auditPort.existsByTransactionId(request.transactionId())) {
+            log.warn("Duplicate transaction {} — returning prior decision, skipping reprocessing",
+                    request.transactionId());
+            return auditPort.findByTransactionId(request.transactionId())
+                    .map(this::toDecision)
+                    .orElseThrow(() -> new TransactionNotFoundException(request.transactionId()));
+        }
+
         Instant decidedAt = Instant.now();
 
         List<RuleViolation> signals = new ArrayList<>(rulesEngine.evaluate(request));
@@ -73,5 +82,23 @@ public class TransactionEvaluationService {
         log.info("Evaluated transaction {} -> {} (score {}, velocity {}, reasons {})",
                 request.transactionId(), decision, score, velocity.count(), reasons);
         return new FraudDecision(request.transactionId(), decision, score, reasons, decidedAt);
+    }
+
+    /**
+     * Looks up the decision previously recorded for a transaction.
+     *
+     * @param transactionId the transaction id
+     * @return the recorded decision
+     * @throws TransactionNotFoundException if no decision has been recorded
+     */
+    public FraudDecision findDecision(String transactionId) {
+        return auditPort.findByTransactionId(transactionId)
+                .map(this::toDecision)
+                .orElseThrow(() -> new TransactionNotFoundException(transactionId));
+    }
+
+    private FraudDecision toDecision(AuditRecord record) {
+        return new FraudDecision(record.transactionId(), record.decision(),
+                record.riskScore(), record.reasons(), record.createdAt());
     }
 }

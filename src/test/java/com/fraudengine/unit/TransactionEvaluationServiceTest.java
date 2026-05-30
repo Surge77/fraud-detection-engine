@@ -91,6 +91,22 @@ class TransactionEvaluationServiceTest {
     }
 
     @Test
+    void duplicate_transaction_returns_prior_decision_without_reprocessing() {
+        when(auditPort.existsByTransactionId("tx-dup")).thenReturn(true);
+        when(auditPort.findByTransactionId("tx-dup")).thenReturn(java.util.Optional.of(
+                new com.fraudengine.domain.model.AuditRecord(
+                        "tx-dup", "acc_001", "merch_001", new BigDecimal("100"), "USD",
+                        "Iran", 90, Decision.BLOCK, List.of("BLACKLISTED_MERCHANT"), Instant.now())));
+
+        FraudDecision decision = service.evaluate(request("tx-dup"));
+
+        assertThat(decision.decision()).isEqualTo(Decision.BLOCK);
+        assertThat(decision.riskScore()).isEqualTo(90);
+        verify(rulesEngine, org.mockito.Mockito.never()).evaluate(any());
+        verify(auditPort, org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
     void persists_audit_record_with_score_and_decision() {
         when(rulesEngine.evaluate(any())).thenReturn(List.of(RuleViolation.BLACKLISTED_MERCHANT));
         when(velocityChecker.record(anyString())).thenReturn(new VelocityResult(11, true));
