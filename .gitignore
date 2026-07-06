@@ -45,3 +45,5 @@ Thumbs.db
 # Docker volumes (local data)
 **/pgdata/
 **/redis-data/
+
+.playwright-mcp/
