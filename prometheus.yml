@@ -8,3 +8,10 @@ scrape_configs:
       # host.docker.internal resolves to the host running the Spring Boot app
       # from inside the Prometheus container (Docker Desktop on Windows/macOS).
       - targets: ["host.docker.internal:8080"]
+
+  - job_name: ledger-engine
+    metrics_path: /actuator/prometheus
+    static_configs:
+      # Run ledger-engine with LEDGER_PORT=8081 when both engines are up
+      # (both default to 8080 otherwise).
+      - targets: ["host.docker.internal:8081"]
