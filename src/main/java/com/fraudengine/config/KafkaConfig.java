@@ -1,11 +1,19 @@
 package com.fraudengine.config;
 
 import com.fraudengine.infrastructure.kafka.KafkaTopics;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.TopicBuilder;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.util.backoff.FixedBackOff;
@@ -40,5 +48,30 @@ public class KafkaConfig {
     public DefaultErrorHandler kafkaErrorHandler(KafkaTemplate<String, Object> template) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
         return new DefaultErrorHandler(recoverer, new FixedBackOff(RETRY_INTERVAL_MS, MAX_RETRIES));
+    }
+
+    /**
+     * Listener factory for topics owned by other services. The default factory
+     * deserializes into {@code TransactionRequest}; ledger events are a foreign
+     * schema, so they arrive as raw JSON and are decoded at the mapping boundary.
+     */
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> ledgerTransferListenerContainerFactory(
+            KafkaProperties kafkaProperties, DefaultErrorHandler kafkaErrorHandler) {
+        Map<String, Object> config = new HashMap<>(kafkaProperties.buildConsumerProperties(null));
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(config));
+        factory.setCommonErrorHandler(kafkaErrorHandler);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+        // Set explicitly: this factory is built by hand, so it does not inherit
+        // spring.kafka.listener.observation-enabled. Without it the consumer never
+        // extracts the traceparent header and the ledger trace silently ends at the
+        // broker instead of continuing into this service.
+        factory.getContainerProperties().setObservationEnabled(true);
+        return factory;
     }
 }

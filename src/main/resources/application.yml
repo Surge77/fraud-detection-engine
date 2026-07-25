@@ -43,6 +43,10 @@ spring:
         spring.json.value.default.type: com.fraudengine.domain.model.TransactionRequest
     listener:
       ack-mode: manual
+      # Continues the trace started by the producer instead of beginning a new one.
+      observation-enabled: true
+    template:
+      observation-enabled: true
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -60,6 +64,14 @@ management:
   metrics:
     tags:
       application: fraud-engine
+  tracing:
+    sampling:
+      # Must match ledger-engine: a sampled trace on one side and an unsampled one
+      # on the other produces a broken half-trace across the Kafka hop.
+      probability: ${FRAUD_TRACE_SAMPLE:1.0}
+  otlp:
+    tracing:
+      endpoint: ${FRAUD_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
 
 springdoc:
   swagger-ui:
