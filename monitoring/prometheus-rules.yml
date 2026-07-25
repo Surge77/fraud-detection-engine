@@ -1,0 +1,82 @@
+groups:
+  - name: ledger-platform-slo
+    interval: 15s
+    rules:
+      # --- Recording rules -------------------------------------------------
+      # Precomputed so alert expressions stay readable and cheap to evaluate.
+      - record: job:ledger_transfer_latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(http_server_requests_seconds_bucket{application="ledger-engine",uri="/transfers"}[5m])))
+
+      - record: job:ledger_error_ratio:5m
+        expr: |
+          sum(rate(http_server_requests_seconds_count{application="ledger-engine",status=~"5.."}[5m]))
+            /
+          clamp_min(sum(rate(http_server_requests_seconds_count{application="ledger-engine"}[5m])), 1)
+
+      # --- SLO alerts ------------------------------------------------------
+      # SLO: 99.5% of ledger writes complete in under 200ms.
+      - alert: LedgerWriteLatencySLOBreach
+        expr: job:ledger_transfer_latency_p99:5m > 0.2
+        for: 30s
+        labels:
+          severity: warning
+          service: ledger-engine
+        annotations:
+          summary: "Ledger write p99 above the 200ms objective"
+          description: "p99 is {{ $value | humanizeDuration }} over the last 5m."
+
+      # SLO: 99.5% availability. Fires fast because a 5xx on a money-moving
+      # endpoint is not something to average away over an hour.
+      - alert: LedgerAvailabilitySLOBreach
+        expr: job:ledger_error_ratio:5m > 0.005
+        for: 30s
+        labels:
+          severity: critical
+          service: ledger-engine
+        annotations:
+          summary: "Ledger 5xx ratio above the 0.5% error budget"
+
+      # The signal no HTTP metric can give you: transfers are committing to the
+      # ledger but not reaching fraud scoring. Money moves; risk checks do not.
+      - alert: OutboxLagGrowing
+        expr: ledger_outbox_lag > 100
+        for: 1m
+        labels:
+          severity: critical
+          service: ledger-engine
+        annotations:
+          summary: "Outbox backlog above 100 unpublished events"
+          description: "Transfers are committed but not reaching fraud-engine."
+
+      - alert: OutboxPublishFailing
+        expr: rate(ledger_outbox_publish_failures_total[1m]) > 0
+        for: 30s
+        labels:
+          severity: critical
+          service: ledger-engine
+        annotations:
+          summary: "Outbox publishing is failing"
+
+      # --- Availability ----------------------------------------------------
+      # 15s "for" window chosen to satisfy the platform's stated goal: an injected
+      # fault must raise an alert in under 30 seconds end to end.
+      - alert: ServiceDown
+        expr: up{job=~"ledger-engine|fraud-engine"} == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is not responding to scrapes"
+
+      - alert: FraudEvaluationLatencyHigh
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(fraud_evaluation_duration_seconds_bucket[5m]))) > 0.2
+        for: 30s
+        labels:
+          severity: warning
+          service: fraud-engine
+        annotations:
+          summary: "Fraud evaluation p99 above the 200ms budget"

@@ -8,3 +8,23 @@ datasources:
     url: http://prometheus:9090
     isDefault: true
     editable: true
+
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: true
+    jsonData:
+      # Turns a span into a jump to that request's logs. The correlation key is
+      # traceId, which both services put into the MDC — this is the whole reason
+      # the log pattern carries it.
+      tracesToLogsV2:
+        datasourceUid: prometheus
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+        tags: ["traceId"]
+      # Service graph and node metrics come from the same Prometheus, so the
+      # ledger -> Kafka -> fraud topology is derived rather than hand-drawn.
+      serviceMap:
+        datasourceUid: prometheus

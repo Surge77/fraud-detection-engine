@@ -67,6 +67,11 @@ public class KafkaConfig {
         factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(config));
         factory.setCommonErrorHandler(kafkaErrorHandler);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+        // Set explicitly: this factory is built by hand, so it does not inherit
+        // spring.kafka.listener.observation-enabled. Without it the consumer never
+        // extracts the traceparent header and the ledger trace silently ends at the
+        // broker instead of continuing into this service.
+        factory.getContainerProperties().setObservationEnabled(true);
         return factory;
     }
 }
