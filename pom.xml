@@ -96,7 +96,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>8.0</version>
+            <version>9.0</version>
         </dependency>
         <!-- Tracing via the Micrometer bridge, matching ledger-engine. Spring Kafka's
              observation support extracts the W3C traceparent header the producer wrote,
