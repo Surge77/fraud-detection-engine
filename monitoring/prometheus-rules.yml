@@ -70,10 +70,15 @@ groups:
         annotations:
           summary: "{{ $labels.job }} is not responding to scrapes"
 
+      # Metric name is derived from the Timer registered in FraudMetrics
+      # ("fraud.pipeline.duration"), which Micrometer exports to Prometheus as
+      # fraud_pipeline_duration_seconds. Verify against /actuator/prometheus before
+      # trusting this alert — a name that does not exist fails silently as an alert
+      # that simply never fires.
       - alert: FraudEvaluationLatencyHigh
         expr: |
           histogram_quantile(0.99,
-            sum by (le) (rate(fraud_evaluation_duration_seconds_bucket[5m]))) > 0.2
+            sum by (le) (rate(fraud_pipeline_duration_seconds_bucket[5m]))) > 0.2
         for: 30s
         labels:
           severity: warning

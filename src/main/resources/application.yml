@@ -64,6 +64,12 @@ management:
   metrics:
     tags:
       application: fraud-engine
+    distribution:
+      # Without buckets a Timer exports only count/sum, and histogram_quantile in
+      # the SLO rules would match no series and return nothing at all.
+      percentiles-histogram:
+        http.server.requests: true
+        fraud.pipeline.duration: true
   tracing:
     sampling:
       # Must match ledger-engine: a sampled trace on one side and an unsampled one
